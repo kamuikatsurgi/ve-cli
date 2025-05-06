@@ -23,7 +23,7 @@ func fetchAndDecode(start, end int64) error {
 		fmt.Printf("Fetching and decoding VE for block height %d...\n", start)
 		resp, err := internal.FetchAndDecodeVE(httpClient, endpoint, start)
 		if err != nil {
-			return fmt.Errorf("failed to fetch and decode VE at height %d: %w", start, err)
+			return err
 		}
 		internal.PrintExtendedCommitInfo(start, resp)
 		fmt.Printf("Successfully fetched and decoded VE at height %d.\n", start)
@@ -31,7 +31,7 @@ func fetchAndDecode(start, end int64) error {
 		fmt.Printf("Fetching and decoding VEs for blocks from height %d to %d...\n", start, end)
 		resp, err := internal.FetchAndDecodeVEs(httpClient, endpoint, start, end)
 		if err != nil {
-			return fmt.Errorf("failed to fetch and decode VEs from height %d to %d: %w", start, end, err)
+			return err
 		}
 		for i, ve := range resp {
 			internal.PrintExtendedCommitInfo(start+int64(i), ve)
