@@ -43,9 +43,10 @@ func fetchAndDecode(start, end int64) error {
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "ve-cli",
-	Short: "Extract and decode VEs from Heimdall-v2 blocks",
-	Long:  "Use the 'block' subcommand for a single block, or the 'blocks' subcommand to process a range of blocks.",
+	Use:          "ve-cli",
+	Short:        "Extract and decode VEs from Heimdall-v2 blocks",
+	Long:         "Use the 'block' subcommand for a single block, or the 'blocks' subcommand to process a range of blocks.",
+	SilenceUsage: true,
 }
 
 var blockCmd = &cobra.Command{
