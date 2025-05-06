@@ -2,78 +2,93 @@ package cmd
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/kamuikatsurgi/ve-cli/internal"
 )
 
 var (
-	blockFlag  bool
-	blocksFlag bool
-
-	StartHeight int64
-	EndHeight   int64
+	endpoint   string
+	httpClient = &http.Client{Timeout: 5 * time.Second}
 )
 
+// fetchAndDecode handles the core logic of fetching and decoding blocks.
+func fetchAndDecode(start, end int64) error {
+	if start == end {
+		fmt.Printf("Fetching and decoding VE for block height %d...\n", start)
+		resp, err := internal.FetchAndDecodeVE(httpClient, endpoint, start)
+		if err != nil {
+			return fmt.Errorf("failed to fetch and decode VE at height %d: %w", start, err)
+		}
+		internal.PrintExtendedCommitInfo(start, resp)
+		fmt.Printf("Successfully fetched and decoded VE at height %d.\n", start)
+	} else {
+		fmt.Printf("Fetching and decoding VEs for blocks from height %d to %d...\n", start, end)
+		resp, err := internal.FetchAndDecodeVEs(httpClient, endpoint, start, end)
+		if err != nil {
+			return fmt.Errorf("failed to fetch and decode VEs from height %d to %d: %w", start, end, err)
+		}
+		for i, ve := range resp {
+			internal.PrintExtendedCommitInfo(start+int64(i), ve)
+		}
+		fmt.Printf("Successfully fetched and decoded VEs from height %d to %d.\n", start, end)
+	}
+
+	return nil
+}
+
 var rootCmd = &cobra.Command{
-	Use:   "ve-cli --block <height> | --blocks <start-height> <end-height>",
+	Use:   "ve-cli",
 	Short: "Extract and decode VEs from Heimdall-v2 blocks",
-	Long:  `Use --block <height> for a single block, or --blocks <start-height> <end-height> to process a range of blocks.`,
-	Args: func(cmd *cobra.Command, args []string) error {
-		if blockFlag && blocksFlag {
-			return fmt.Errorf("cannot use both --block and --blocks together")
-		}
-		if !blockFlag && !blocksFlag {
-			return fmt.Errorf("must provide either --block or --blocks")
-		}
-		if blockFlag && len(args) != 1 {
-			return fmt.Errorf("you must pass exactly one argument with --block: <height>")
-		}
-		if blocksFlag && len(args) != 2 {
-			return fmt.Errorf("you must pass exactly two arguments with --blocks: <start> <end>")
-		}
-		return nil
-	},
-	Run: func(cmd *cobra.Command, args []string) {
-		var err error
+	Long:  "Use the 'block' subcommand for a single block, or the 'blocks' subcommand to process a range of blocks.",
+}
 
-		if blockFlag {
-			StartHeight, err = strconv.ParseInt(args[0], 10, 64)
-			if err != nil {
-				fmt.Println("❌ Invalid block height:", err)
-				os.Exit(1)
-			}
-			EndHeight = StartHeight
-
-			fmt.Printf("Fetching and decoding block height %d...\n", StartHeight)
-		} else {
-			StartHeight, err = strconv.ParseInt(args[0], 10, 64)
-			if err != nil {
-				fmt.Println("❌ Invalid start height:", err)
-				os.Exit(1)
-			}
-			EndHeight, err = strconv.ParseInt(args[1], 10, 64)
-			if err != nil {
-				fmt.Println("❌ Invalid end height:", err)
-				os.Exit(1)
-			}
-			if StartHeight > EndHeight {
-				fmt.Println("❌ Start height cannot be greater than end height.")
-				os.Exit(1)
-			}
-
-			fmt.Printf("Fetching and decoding from block height %d to %d...\n", StartHeight, EndHeight)
+var blockCmd = &cobra.Command{
+	Use:   "block <height>",
+	Short: "Process a single block height",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		height, err := strconv.ParseInt(args[0], 10, 64)
+		if err != nil {
+			return fmt.Errorf("invalid block height: %v", err)
 		}
+		return fetchAndDecode(height, height)
 	},
 }
 
-func Execute() {
-	rootCmd.Flags().BoolVar(&blockFlag, "block", false, "Specify a single block height")
-	rootCmd.Flags().BoolVar(&blocksFlag, "blocks", false, "Enable range mode with 2 args: <start-height> <end-height>")
+var blocksCmd = &cobra.Command{
+	Use:   "blocks <start-height> <end-height>",
+	Short: "Process a range of block heights",
+	Args:  cobra.ExactArgs(2),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		start, err := strconv.ParseInt(args[0], 10, 64)
+		if err != nil {
+			return fmt.Errorf("invalid start height: %v", err)
+		}
+		end, err := strconv.ParseInt(args[1], 10, 64)
+		if err != nil {
+			return fmt.Errorf("invalid end height: %v", err)
+		}
+		if start > end {
+			return fmt.Errorf("start height (%d) cannot be greater than end height (%d)", start, end)
+		}
+		return fetchAndDecode(start, end)
+	},
+}
 
+func init() {
+	rootCmd.AddCommand(blockCmd, blocksCmd)
+	rootCmd.PersistentFlags().StringVar(&endpoint, "endpoint", "http://localhost:26657", "Heimdall-v2 RPC URL")
+}
+
+func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println("❌ CLI execution error:", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
