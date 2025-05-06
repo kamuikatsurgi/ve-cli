@@ -27,7 +27,7 @@ func FetchAndDecodeVEs(httpClient *http.Client, endpoint string, start, end int6
 	for h := start; h <= end; h++ {
 		veStr, err := FetchVE(httpClient, endpoint, h)
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch VE: %w", err)
+			return nil, err
 		}
 		if veStr == "" {
 			continue
@@ -35,12 +35,12 @@ func FetchAndDecodeVEs(httpClient *http.Client, endpoint string, start, end int6
 
 		veBytes, err := base64.StdEncoding.DecodeString(veStr)
 		if err != nil {
-			return nil, fmt.Errorf("failed to base64-decode VE: %w", err)
+			return nil, err
 		}
 
 		decoded, err := DecodeVE(veBytes)
 		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal VE protobuf: %w", err)
+			return nil, err
 		}
 		results = append(results, decoded)
 	}
@@ -51,20 +51,20 @@ func FetchAndDecodeVEs(httpClient *http.Client, endpoint string, start, end int6
 func FetchAndDecodeVE(httpClient *http.Client, endpoint string, height int64) (*abci.ExtendedCommitInfo, error) {
 	veStr, err := FetchVE(httpClient, endpoint, height)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch VE: %w", err)
+		return nil, err
 	}
 	if veStr == "" {
-		return nil, fmt.Errorf("no VE found at block height %d", height)
+		return nil, err
 	}
 
 	veBytes, err := base64.StdEncoding.DecodeString(veStr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to base64-decode VE: %w", err)
+		return nil, err
 	}
 
 	decoded, err := DecodeVE(veBytes)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal VE protobuf: %w", err)
+		return nil, err
 	}
 	return decoded, nil
 }
@@ -73,22 +73,22 @@ func FetchAndDecodeVE(httpClient *http.Client, endpoint string, height int64) (*
 func FetchVE(httpClient *http.Client, endpoint string, height int64) (string, error) {
 	resp, err := httpClient.Get(fmt.Sprintf("%s/block?height=%d", endpoint, height))
 	if err != nil {
-		return "", fmt.Errorf("HTTP error fetching block %d: %w", height, err)
+		return "", err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Endpoint /block returned %d %s", resp.StatusCode, resp.Status)
+		return "", fmt.Errorf("endpoint returned %s", resp.Status)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("error reading response for block %d: %w", height, err)
+		return "", err
 	}
 
 	var br BlockResponse
 	if err := json.Unmarshal(body, &br); err != nil {
-		return "", fmt.Errorf("JSON unmarshal error for block %d: %w", height, err)
+		return "", err
 	}
 
 	if len(br.Result.Block.Data.Txs) == 0 {
