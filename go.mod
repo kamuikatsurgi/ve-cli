@@ -3,7 +3,7 @@ module github.com/kamuikatsurgi/ve-cli
 go 1.24.2
 
 require (
-	github.com/0xPolygon/heimdall-v2 v0.1.13-0.20250507083007-ba72efb22ea9
+	github.com/0xPolygon/heimdall-v2 v0.1.12
 	github.com/cometbft/cometbft v0.38.17
 	github.com/cosmos/gogoproto v1.7.0
 	github.com/spf13/cobra v1.9.1
