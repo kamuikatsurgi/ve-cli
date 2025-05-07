@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 
+	checkpointTypes "github.com/0xPolygon/heimdall-v2/x/checkpoint/types"
+
 	"github.com/kamuikatsurgi/ve-cli/config"
 )
 
@@ -21,7 +23,17 @@ func PrintNonRpVoteExtension(height int64, nonRpVoteExt []byte) error {
 	if dummy {
 		fmt.Printf("NonRpVoteExtension [DUMMY #HEIMDALL-VOTE-EXTENSION#]: %s\n", hex.EncodeToString(nonRpVoteExt))
 	} else {
-		fmt.Printf("NonRpVoteExtension [CHECKPOINT MSG]: %s\n", hex.EncodeToString(nonRpVoteExt))
+		msg, err := GetCheckpointMsg(nonRpVoteExt)
+		if err != nil {
+			return err
+		}
+		fmt.Println("NonRpVoteExtension [CHECKPOINT MSG]:")
+		fmt.Printf("  Proposer: %s\n", msg.Proposer)
+		fmt.Printf("  StartBlock: %d\n", msg.StartBlock)
+		fmt.Printf("  EndBlock: %d\n", msg.EndBlock)
+		fmt.Printf("  RootHash: %s\n", hex.EncodeToString(msg.RootHash))
+		fmt.Printf("  AccountRootHash: %s\n", hex.EncodeToString(msg.AccountRootHash))
+		fmt.Printf("  BorChainId: %s\n", msg.BorChainId)
 	}
 
 	return nil
@@ -65,4 +77,15 @@ func GetDummyNonRpVoteExtension(height int64, chainID string) ([]byte, error) {
 	}
 
 	return buf.Bytes(), nil
+}
+
+// GetCheckpointMsg returns the checkpoint message from the non-rp vote extension.
+func GetCheckpointMsg(nonRpVoteExt []byte) (*checkpointTypes.MsgCheckpoint, error) {
+	// Skip leading marker byte
+	checkpointMsg, err := checkpointTypes.UnpackCheckpointSideSignBytes(nonRpVoteExt[1:])
+	if err != nil {
+		return nil, err
+	}
+
+	return checkpointMsg, nil
 }
