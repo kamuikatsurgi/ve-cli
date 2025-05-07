@@ -3,6 +3,7 @@ package internal
 import (
 	"encoding/hex"
 	"fmt"
+	"net/http"
 
 	sidetxs "github.com/0xPolygon/heimdall-v2/sidetxs"
 	abci "github.com/cometbft/cometbft/abci/types"
@@ -10,7 +11,7 @@ import (
 )
 
 // DecodeAndPrintExtendedCommitInfo decodes and prints all fields of ExtendedCommitInfo.
-func DecodeAndPrintExtendedCommitInfo(height int64, info *abci.ExtendedCommitInfo) error {
+func DecodeAndPrintExtendedCommitInfo(httpClient *http.Client, endpoint string, height int64, info *abci.ExtendedCommitInfo) error {
 	voteExts := make([]sidetxs.VoteExtension, len(info.Votes))
 	for i, v := range info.Votes {
 		if err := goproto.Unmarshal(v.VoteExtension, &voteExts[i]); err != nil {
@@ -18,16 +19,19 @@ func DecodeAndPrintExtendedCommitInfo(height int64, info *abci.ExtendedCommitInf
 		}
 	}
 
-	printHeader(height, info.Round)
+	PrintHeader(height, info.Round)
 
 	for i, v := range info.Votes {
-		printVote(i+1, v, voteExts[i])
+		err := PrintVote(httpClient, endpoint, height, i+1, v, voteExts[i])
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-func printHeader(height int64, round int32) {
+func PrintHeader(height int64, round int32) {
 	fmt.Println()
 	fmt.Println("================ Extended Commit Info ================")
 	fmt.Printf("Height: %d\n", height)
@@ -36,42 +40,47 @@ func printHeader(height int64, round int32) {
 	fmt.Println()
 }
 
-func printVote(index int, voteInfo abci.ExtendedVoteInfo, ext sidetxs.VoteExtension) {
+func PrintVote(httpClient *http.Client, endpoint string, height int64, index int, voteInfo abci.ExtendedVoteInfo, voteExt sidetxs.VoteExtension) error {
 	fmt.Printf("Vote %d:\n", index)
 	fmt.Println("------------------------------------------------------")
 
-	printValidatorInfo(voteInfo)
-	printVoteExtensionInfo(ext)
-	printRawSignatures(voteInfo)
+	PrintValidatorInfo(voteInfo)
+	PrintVoteExtensionInfo(voteExt)
+	err := PrintNonRpVoteExtAndSignatures(httpClient, endpoint, height, voteInfo)
+	if err != nil {
+		return err
+	}
 
 	fmt.Println("------------------------------------------------------")
 	fmt.Println()
+
+	return nil
 }
 
-func printValidatorInfo(v abci.ExtendedVoteInfo) {
+func PrintValidatorInfo(v abci.ExtendedVoteInfo) {
 	fmt.Printf("Validator: %s\n", hex.EncodeToString(v.Validator.Address))
 	fmt.Printf("Power: %d\n", v.Validator.Power)
 	fmt.Printf("BlockIdFlag: %s\n", v.BlockIdFlag.String())
 }
 
-func printVoteExtensionInfo(ext sidetxs.VoteExtension) {
+func PrintVoteExtensionInfo(voteExt sidetxs.VoteExtension) {
 	fmt.Println("VoteExtension:")
-	fmt.Printf("  BlockHash: %s\n", hex.EncodeToString(ext.BlockHash))
-	fmt.Printf("  Height: %d\n", ext.Height)
+	fmt.Printf("  BlockHash: %s\n", hex.EncodeToString(voteExt.BlockHash))
+	fmt.Printf("  Height: %d\n", voteExt.Height)
 
-	if len(ext.SideTxResponses) == 0 {
+	if len(voteExt.SideTxResponses) == 0 {
 		fmt.Println("  SideTxResponses: []")
 	} else {
 		fmt.Println("  SideTxResponses:")
-		for j, resp := range ext.SideTxResponses {
+		for j, resp := range voteExt.SideTxResponses {
 			fmt.Printf("    Response %d:\n", j+1)
 			fmt.Printf("      TxHash: %s\n", hex.EncodeToString(resp.TxHash))
 			fmt.Printf("      Result: %s\n", resp.Result.String())
 		}
 	}
 
-	if ext.MilestoneProposition != nil {
-		mp := ext.MilestoneProposition
+	if voteExt.MilestoneProposition != nil {
+		mp := voteExt.MilestoneProposition
 		fmt.Println("  MilestoneProposition:")
 		for k, bh := range mp.BlockHashes {
 			fmt.Printf("    BlockHash[%d]: %s\n", k, hex.EncodeToString(bh))
@@ -83,8 +92,13 @@ func printVoteExtensionInfo(ext sidetxs.VoteExtension) {
 	}
 }
 
-func printRawSignatures(v abci.ExtendedVoteInfo) {
+func PrintNonRpVoteExtAndSignatures(httpClient *http.Client, endpoint string, height int64, v abci.ExtendedVoteInfo) error {
 	fmt.Printf("ExtensionSignature: %s\n", hex.EncodeToString(v.ExtensionSignature))
-	fmt.Printf("NonRpVoteExtension: %s\n", hex.EncodeToString(v.NonRpVoteExtension))
+	err := PrintNonRpVoteExtension(httpClient, endpoint, height, v.NonRpVoteExtension)
+	if err != nil {
+		return err
+	}
 	fmt.Printf("NonRpExtensionSignature: %s\n", hex.EncodeToString(v.NonRpExtensionSignature))
+
+	return nil
 }

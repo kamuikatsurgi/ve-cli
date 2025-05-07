@@ -15,6 +15,9 @@ import (
 type BlockResponse struct {
 	Result struct {
 		Block struct {
+			Header struct {
+				ChainID string `json:"chain_id"`
+			}
 			Data struct {
 				Txs []string `json:"txs"`
 			} `json:"data"`
@@ -83,7 +86,7 @@ func FetchVE(httpClient *http.Client, endpoint string, height int64) (string, er
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("endpoint returned %s", resp.Status)
+		return "", fmt.Errorf("unexpected status fetching VE: %s", resp.Status)
 	}
 
 	body, err := io.ReadAll(resp.Body)
@@ -109,4 +112,35 @@ func DecodeVE(bz []byte) (*abci.ExtendedCommitInfo, error) {
 		return nil, err
 	}
 	return &info, nil
+}
+
+// FetchChainID fetches the chain_id from the block at the specified height.
+func FetchChainID(httpClient *http.Client, endpoint string, height int64) (string, error) {
+	url := fmt.Sprintf("%s/block?height=%d", endpoint, height)
+	resp, err := httpClient.Get(url)
+	if err != nil {
+		return "", err
+	}
+
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to close response body: %v\n", err)
+		}
+	}()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("unexpected status fetching chainID: %s", resp.Status)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var br BlockResponse
+	if err := json.Unmarshal(body, &br); err != nil {
+		return "", err
+	}
+
+	return br.Result.Block.Header.ChainID, nil
 }

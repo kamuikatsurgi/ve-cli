@@ -17,15 +17,15 @@ var (
 	httpClient = &http.Client{Timeout: 5 * time.Second}
 )
 
-// fetchAndDecode handles the core logic of fetching and decoding blocks.
-func fetchAndDecode(start, end int64) error {
+// FetchAndDecode handles the core logic of fetching and decoding blocks.
+func FetchAndDecode(start, end int64) error {
 	if start == end {
 		fmt.Printf("Fetching and decoding VE for block height %d...\n", start)
 		resp, err := internal.FetchAndDecodeVE(httpClient, endpoint, start)
 		if err != nil {
 			return err
 		}
-		err = internal.DecodeAndPrintExtendedCommitInfo(start, resp)
+		err = internal.DecodeAndPrintExtendedCommitInfo(httpClient, endpoint, start, resp)
 		if err != nil {
 			return err
 		}
@@ -37,7 +37,7 @@ func fetchAndDecode(start, end int64) error {
 			return err
 		}
 		for i, ve := range resp {
-			err = internal.DecodeAndPrintExtendedCommitInfo(start+int64(i), ve)
+			err = internal.DecodeAndPrintExtendedCommitInfo(httpClient, endpoint, start+int64(i), ve)
 			if err != nil {
 				return err
 			}
@@ -64,7 +64,7 @@ var blockCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("invalid block height: %v", err)
 		}
-		return fetchAndDecode(height, height)
+		return FetchAndDecode(height, height)
 	},
 }
 
@@ -84,7 +84,7 @@ var blocksCmd = &cobra.Command{
 		if start > end {
 			return fmt.Errorf("start height (%d) cannot be greater than end height (%d)", start, end)
 		}
-		return fetchAndDecode(start, end)
+		return FetchAndDecode(start, end)
 	},
 }
 
