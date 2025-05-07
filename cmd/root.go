@@ -55,13 +55,27 @@ var blockCmd = &cobra.Command{
 	Use:   "block <height>",
 	Short: "Process a single block height",
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	PreRunE: func(cmd *cobra.Command, args []string) error {
 		height, err := strconv.ParseInt(args[0], 10, 64)
 		if err != nil {
 			return fmt.Errorf("invalid block height: %v", err)
 		}
+		if height < 0 {
+			return fmt.Errorf("block height cannot be negative")
+		}
+
 		config.StartHeight = height
 		config.EndHeight = height
+
+		chainID, err := internal.FetchChainID(config.HTTPClient, config.Endpoint, config.StartHeight)
+		if err != nil {
+			return fmt.Errorf("failed to fetch chain ID: %w", err)
+		}
+		config.ChainID = chainID
+
+		return nil
+	},
+	RunE: func(cmd *cobra.Command, args []string) error {
 		return FetchAndDecode()
 	},
 }
@@ -70,7 +84,7 @@ var blocksCmd = &cobra.Command{
 	Use:   "blocks <start-height> <end-height>",
 	Short: "Process a range of block heights",
 	Args:  cobra.ExactArgs(2),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	PreRunE: func(cmd *cobra.Command, args []string) error {
 		start, err := strconv.ParseInt(args[0], 10, 64)
 		if err != nil {
 			return fmt.Errorf("invalid start height: %v", err)
@@ -84,6 +98,16 @@ var blocksCmd = &cobra.Command{
 		}
 		config.StartHeight = start
 		config.EndHeight = end
+
+		chainID, err := internal.FetchChainID(config.HTTPClient, config.Endpoint, config.StartHeight)
+		if err != nil {
+			return fmt.Errorf("failed to fetch chain ID: %w", err)
+		}
+		config.ChainID = chainID
+
+		return nil
+	},
+	RunE: func(cmd *cobra.Command, args []string) error {
 		return FetchAndDecode()
 	},
 }
@@ -96,15 +120,7 @@ func init() {
 }
 
 func initConfig() {
-	config.HTTPClient = &http.Client{Timeout: 5 * time.Second}
-
-	chainID, err := internal.FetchChainID(config.HTTPClient, config.Endpoint, config.StartHeight)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to fetch chain ID: %v\n", err)
-		os.Exit(1)
-	}
-
-	config.ChainID = chainID
+	config.HTTPClient = &http.Client{Timeout: 10 * time.Second}
 }
 
 func Execute() {
