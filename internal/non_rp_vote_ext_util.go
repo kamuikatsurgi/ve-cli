@@ -6,14 +6,15 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"net/http"
+
+	"github.com/kamuikatsurgi/ve-cli/config"
 )
 
 var dummyNonRpVoteExtension = []byte("\t\r\n#HEIMDALL-VOTE-EXTENSION#\r\n\t")
 
 // PrintNonRpVoteExtension prints the non-RP vote extension.
-func PrintNonRpVoteExtension(httpClient *http.Client, endpoint string, height int64, nonRpVoteExt []byte) error {
-	dummy, err := IsDummyNonRpVoteExtension(httpClient, endpoint, height, nonRpVoteExt)
+func PrintNonRpVoteExtension(height int64, nonRpVoteExt []byte) error {
+	dummy, err := IsDummyNonRpVoteExtension(height, nonRpVoteExt)
 	if err != nil {
 		return err
 	}
@@ -27,12 +28,8 @@ func PrintNonRpVoteExtension(httpClient *http.Client, endpoint string, height in
 }
 
 // IsDummyNonRpVoteExtension returns true if the given byte slice matches the dummy extension.
-func IsDummyNonRpVoteExtension(httpClient *http.Client, endpoint string, height int64, nonRpVoteExt []byte) (bool, error) {
-	chainID, err := FetchChainID(httpClient, endpoint, height)
-	if err != nil {
-		return false, err
-	}
-	dummyVoteExt, err := GetDummyNonRpVoteExtension(height-1, chainID)
+func IsDummyNonRpVoteExtension(height int64, nonRpVoteExt []byte) (bool, error) {
+	dummyVoteExt, err := GetDummyNonRpVoteExtension(height-1, config.ChainID)
 	if err != nil {
 		return false, err
 	}

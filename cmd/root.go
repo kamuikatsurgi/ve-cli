@@ -9,40 +9,36 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/kamuikatsurgi/ve-cli/config"
 	"github.com/kamuikatsurgi/ve-cli/internal"
 )
 
-var (
-	endpoint   string
-	httpClient = &http.Client{Timeout: 5 * time.Second}
-)
-
 // FetchAndDecode handles the core logic of fetching and decoding blocks.
-func FetchAndDecode(start, end int64) error {
-	if start == end {
-		fmt.Printf("Fetching and decoding VE for block height %d...\n", start)
-		resp, err := internal.FetchAndDecodeVE(httpClient, endpoint, start)
+func FetchAndDecode() error {
+	if config.StartHeight == config.EndHeight {
+		fmt.Printf("Fetching and decoding VE for block height %d...\n", config.StartHeight)
+		resp, err := internal.FetchAndDecodeVE(config.HTTPClient, config.Endpoint, config.StartHeight)
 		if err != nil {
 			return err
 		}
-		err = internal.DecodeAndPrintExtendedCommitInfo(httpClient, endpoint, start, resp)
+		err = internal.DecodeAndPrintExtendedCommitInfo(config.StartHeight, resp)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Successfully fetched and decoded VE at height %d.\n", start)
+		fmt.Printf("Successfully fetched and decoded VE at height %d.\n", config.StartHeight)
 	} else {
-		fmt.Printf("Fetching and decoding VEs for blocks from height %d to %d...\n", start, end)
-		resp, err := internal.FetchAndDecodeVEs(httpClient, endpoint, start, end)
+		fmt.Printf("Fetching and decoding VEs for blocks from height %d to %d...\n", config.StartHeight, config.EndHeight)
+		resp, err := internal.FetchAndDecodeVEs(config.HTTPClient, config.Endpoint, config.StartHeight, config.EndHeight)
 		if err != nil {
 			return err
 		}
 		for i, ve := range resp {
-			err = internal.DecodeAndPrintExtendedCommitInfo(httpClient, endpoint, start+int64(i), ve)
+			err = internal.DecodeAndPrintExtendedCommitInfo(config.StartHeight+int64(i), ve)
 			if err != nil {
 				return err
 			}
 		}
-		fmt.Printf("Successfully fetched and decoded VEs from height %d to %d.\n", start, end)
+		fmt.Printf("Successfully fetched and decoded VEs from height %d to %d.\n", config.StartHeight, config.EndHeight)
 	}
 
 	return nil
@@ -64,7 +60,9 @@ var blockCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("invalid block height: %v", err)
 		}
-		return FetchAndDecode(height, height)
+		config.StartHeight = height
+		config.EndHeight = height
+		return FetchAndDecode()
 	},
 }
 
@@ -84,13 +82,29 @@ var blocksCmd = &cobra.Command{
 		if start > end {
 			return fmt.Errorf("start height (%d) cannot be greater than end height (%d)", start, end)
 		}
-		return FetchAndDecode(start, end)
+		config.StartHeight = start
+		config.EndHeight = end
+		return FetchAndDecode()
 	},
 }
 
 func init() {
+	cobra.OnInitialize(initConfig)
+
 	rootCmd.AddCommand(blockCmd, blocksCmd)
-	rootCmd.PersistentFlags().StringVar(&endpoint, "endpoint", "http://localhost:26657", "Heimdall-v2 RPC URL")
+	rootCmd.PersistentFlags().StringVar(&config.Endpoint, "endpoint", "http://localhost:26657", "Heimdall-v2 RPC URL")
+}
+
+func initConfig() {
+	config.HTTPClient = &http.Client{Timeout: 5 * time.Second}
+
+	chainID, err := internal.FetchChainID(config.HTTPClient, config.Endpoint, config.StartHeight)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to fetch chain ID: %v\n", err)
+		os.Exit(1)
+	}
+
+	config.ChainID = chainID
 }
 
 func Execute() {

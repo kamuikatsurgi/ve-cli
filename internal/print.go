@@ -3,7 +3,6 @@ package internal
 import (
 	"encoding/hex"
 	"fmt"
-	"net/http"
 
 	sidetxs "github.com/0xPolygon/heimdall-v2/sidetxs"
 	abci "github.com/cometbft/cometbft/abci/types"
@@ -11,7 +10,7 @@ import (
 )
 
 // DecodeAndPrintExtendedCommitInfo decodes and prints all fields of ExtendedCommitInfo.
-func DecodeAndPrintExtendedCommitInfo(httpClient *http.Client, endpoint string, height int64, info *abci.ExtendedCommitInfo) error {
+func DecodeAndPrintExtendedCommitInfo(height int64, info *abci.ExtendedCommitInfo) error {
 	voteExts := make([]sidetxs.VoteExtension, len(info.Votes))
 	for i, v := range info.Votes {
 		if err := goproto.Unmarshal(v.VoteExtension, &voteExts[i]); err != nil {
@@ -22,7 +21,7 @@ func DecodeAndPrintExtendedCommitInfo(httpClient *http.Client, endpoint string, 
 	PrintHeader(height, info.Round)
 
 	for i, v := range info.Votes {
-		err := PrintVote(httpClient, endpoint, height, i+1, v, voteExts[i])
+		err := PrintVote(height, i+1, v, voteExts[i])
 		if err != nil {
 			return err
 		}
@@ -40,13 +39,13 @@ func PrintHeader(height int64, round int32) {
 	fmt.Println()
 }
 
-func PrintVote(httpClient *http.Client, endpoint string, height int64, index int, voteInfo abci.ExtendedVoteInfo, voteExt sidetxs.VoteExtension) error {
+func PrintVote(height int64, index int, voteInfo abci.ExtendedVoteInfo, voteExt sidetxs.VoteExtension) error {
 	fmt.Printf("Vote %d:\n", index)
 	fmt.Println("------------------------------------------------------")
 
 	PrintValidatorInfo(voteInfo)
 	PrintVoteExtensionInfo(voteExt)
-	err := PrintNonRpVoteExtAndSignatures(httpClient, endpoint, height, voteInfo)
+	err := PrintNonRpVoteExtAndSignatures(height, voteInfo)
 	if err != nil {
 		return err
 	}
@@ -92,9 +91,9 @@ func PrintVoteExtensionInfo(voteExt sidetxs.VoteExtension) {
 	}
 }
 
-func PrintNonRpVoteExtAndSignatures(httpClient *http.Client, endpoint string, height int64, v abci.ExtendedVoteInfo) error {
+func PrintNonRpVoteExtAndSignatures(height int64, v abci.ExtendedVoteInfo) error {
 	fmt.Printf("ExtensionSignature: %s\n", hex.EncodeToString(v.ExtensionSignature))
-	err := PrintNonRpVoteExtension(httpClient, endpoint, height, v.NonRpVoteExtension)
+	err := PrintNonRpVoteExtension(height, v.NonRpVoteExtension)
 	if err != nil {
 		return err
 	}
