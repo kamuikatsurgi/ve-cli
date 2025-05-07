@@ -25,7 +25,10 @@ func fetchAndDecode(start, end int64) error {
 		if err != nil {
 			return err
 		}
-		internal.PrintExtendedCommitInfo(start, resp)
+		err = internal.DecodeAndPrintExtendedCommitInfo(start, resp)
+		if err != nil {
+			return err
+		}
 		fmt.Printf("Successfully fetched and decoded VE at height %d.\n", start)
 	} else {
 		fmt.Printf("Fetching and decoding VEs for blocks from height %d to %d...\n", start, end)
@@ -34,7 +37,10 @@ func fetchAndDecode(start, end int64) error {
 			return err
 		}
 		for i, ve := range resp {
-			internal.PrintExtendedCommitInfo(start+int64(i), ve)
+			err = internal.DecodeAndPrintExtendedCommitInfo(start+int64(i), ve)
+			if err != nil {
+				return err
+			}
 		}
 		fmt.Printf("Successfully fetched and decoded VEs from height %d to %d.\n", start, end)
 	}
