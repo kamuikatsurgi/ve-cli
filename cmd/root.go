@@ -63,7 +63,6 @@ var blockCmd = &cobra.Command{
 		if height < 0 {
 			return fmt.Errorf("block height cannot be negative")
 		}
-
 		config.StartHeight = height
 		config.EndHeight = height
 
@@ -92,6 +91,12 @@ var blocksCmd = &cobra.Command{
 		end, err := strconv.ParseInt(args[1], 10, 64)
 		if err != nil {
 			return fmt.Errorf("invalid end height: %v", err)
+		}
+		if start < 0 {
+			return fmt.Errorf("start height cannot be negative")
+		}
+		if end < 0 {
+			return fmt.Errorf("end height cannot be negative")
 		}
 		if start > end {
 			return fmt.Errorf("start height (%d) cannot be greater than end height (%d)", start, end)
