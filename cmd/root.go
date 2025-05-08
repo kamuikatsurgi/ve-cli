@@ -63,12 +63,15 @@ var blockCmd = &cobra.Command{
 		if height < 0 {
 			return fmt.Errorf("block height cannot be negative")
 		}
+		if height == 1 {
+			return fmt.Errorf("vote extensions are not enabled at block height 1")
+		}
 		config.StartHeight = height
 		config.EndHeight = height
 
 		chainID, err := internal.FetchChainID(config.HTTPClient, config.Endpoint, config.StartHeight)
 		if err != nil {
-			return fmt.Errorf("failed to fetch chain ID: %w", err)
+			return fmt.Errorf("failed to fetch chain ID: %v", err)
 		}
 		config.ChainID = chainID
 
@@ -101,12 +104,15 @@ var blocksCmd = &cobra.Command{
 		if start > end {
 			return fmt.Errorf("start height (%d) cannot be greater than end height (%d)", start, end)
 		}
+		if start == 1 || end == 1 {
+			return fmt.Errorf("vote extensions are not enabled at block height 1")
+		}
 		config.StartHeight = start
 		config.EndHeight = end
 
 		chainID, err := internal.FetchChainID(config.HTTPClient, config.Endpoint, config.StartHeight)
 		if err != nil {
-			return fmt.Errorf("failed to fetch chain ID: %w", err)
+			return fmt.Errorf("failed to fetch chain ID: %v", err)
 		}
 		config.ChainID = chainID
 
@@ -121,11 +127,11 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.AddCommand(blockCmd, blocksCmd)
-	rootCmd.PersistentFlags().StringVar(&config.Endpoint, "endpoint", "http://localhost:26657", "Heimdall-v2 RPC URL")
+	rootCmd.PersistentFlags().StringVarP(&config.Endpoint, "endpoint", "e", "http://localhost:26657", "Heimdall-v2 RPC URL")
 }
 
 func initConfig() {
-	config.HTTPClient = &http.Client{Timeout: 10 * time.Second}
+	config.HTTPClient = &http.Client{Timeout: 25 * time.Second}
 }
 
 func Execute() {
