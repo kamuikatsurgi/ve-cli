@@ -17,7 +17,7 @@ import (
 func FetchAndDecode() error {
 	if config.StartHeight == config.EndHeight {
 		fmt.Printf("Fetching and decoding VE for block height %d...\n", config.StartHeight)
-		resp, err := internal.FetchAndDecodeVE(config.HTTPClient, config.Endpoint, config.StartHeight)
+		resp, err := internal.FetchAndDecodeVE(config.HttpClient, config.CometEndpoint, config.StartHeight)
 		if err != nil {
 			return err
 		}
@@ -28,7 +28,7 @@ func FetchAndDecode() error {
 		fmt.Printf("Successfully fetched and decoded VE at height %d.\n", config.StartHeight)
 	} else {
 		fmt.Printf("Fetching and decoding VEs for blocks from height %d to %d...\n", config.StartHeight, config.EndHeight)
-		resp, err := internal.FetchAndDecodeVEs(config.HTTPClient, config.Endpoint, config.StartHeight, config.EndHeight)
+		resp, err := internal.FetchAndDecodeVEs(config.HttpClient, config.CometEndpoint, config.StartHeight, config.EndHeight)
 		if err != nil {
 			return err
 		}
@@ -69,7 +69,7 @@ var blockCmd = &cobra.Command{
 		config.StartHeight = height
 		config.EndHeight = height
 
-		chainID, err := internal.FetchChainID(config.HTTPClient, config.Endpoint, config.StartHeight)
+		chainID, err := internal.FetchChainID(config.HttpClient, config.CometEndpoint, config.StartHeight)
 		if err != nil {
 			return fmt.Errorf("failed to fetch chain ID: %v", err)
 		}
@@ -110,7 +110,7 @@ var blocksCmd = &cobra.Command{
 		config.StartHeight = start
 		config.EndHeight = end
 
-		chainID, err := internal.FetchChainID(config.HTTPClient, config.Endpoint, config.StartHeight)
+		chainID, err := internal.FetchChainID(config.HttpClient, config.CometEndpoint, config.StartHeight)
 		if err != nil {
 			return fmt.Errorf("failed to fetch chain ID: %v", err)
 		}
@@ -127,11 +127,12 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.AddCommand(blockCmd, blocksCmd)
-	rootCmd.PersistentFlags().StringVarP(&config.Endpoint, "endpoint", "e", "http://localhost:26657", "Heimdall-v2 RPC URL")
+	rootCmd.PersistentFlags().StringVarP(&config.CometEndpoint, "comet-endpoint", "c", "http://localhost:26657", "CometBFT Endpoint")
+	rootCmd.PersistentFlags().StringVarP(&config.HeimdallEndpoint, "heimdall-endpoint", "e", "http://localhost:1317", "Heimdall Endpoint")
 }
 
 func initConfig() {
-	config.HTTPClient = &http.Client{Timeout: 25 * time.Second}
+	config.HttpClient = &http.Client{Timeout: 25 * time.Second}
 }
 
 func Execute() {

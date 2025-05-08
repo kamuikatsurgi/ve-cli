@@ -27,6 +27,11 @@ func DecodeAndPrintExtendedCommitInfo(height int64, info *abci.ExtendedCommitInf
 		}
 	}
 
+	err := PrintSummary(info.Votes, voteExts)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

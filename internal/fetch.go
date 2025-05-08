@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 
 	abci "github.com/cometbft/cometbft/abci/types"
 )
@@ -143,4 +144,42 @@ func FetchChainID(httpClient *http.Client, endpoint string, height int64) (strin
 	}
 
 	return br.Result.Block.Header.ChainID, nil
+}
+
+// FetchTotalVotingPower queries the endpoint at /stake/total-power and returns the total voting power as an int64.
+func FetchTotalVotingPower(httpClient *http.Client, endpoint string) (int64, error) {
+	url := fmt.Sprintf("%s/stake/total-power", endpoint)
+	resp, err := httpClient.Get(url)
+	if err != nil {
+		return 0, err
+	}
+
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to close response body: %v\n", err)
+		}
+	}()
+
+	if resp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("unexpected status fetching total-power: %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, err
+	}
+
+	var totalPowerResponse struct {
+		TotalPower string `json:"total_power"`
+	}
+	if err := json.Unmarshal(body, &totalPowerResponse); err != nil {
+		return 0, err
+	}
+
+	power, err := strconv.ParseInt(totalPowerResponse.TotalPower, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	return power, nil
 }

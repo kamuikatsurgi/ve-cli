@@ -5,10 +5,11 @@ import (
 )
 
 var (
-	ChainID  string
-	Endpoint string
+	ChainID          string
+	CometEndpoint    string
+	HeimdallEndpoint string
 
-	HTTPClient *http.Client
+	HttpClient *http.Client
 
 	StartHeight int64
 	EndHeight   int64

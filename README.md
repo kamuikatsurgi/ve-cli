@@ -16,8 +16,9 @@ Available Commands:
   help        Help about any command
 
 Flags:
-  -e, --endpoint string   Heimdall-v2 RPC URL (default "http://localhost:26657")
-  -h, --help              help for ve-cli
+  -c, --comet-endpoint string      CometBFT Endpoint (default "http://localhost:26657")
+  -e, --heimdall-endpoint string   Heimdall Endpoint (default "http://localhost:1317")
+  -h, --help                       help for ve-cli
 
 Use "ve-cli [command] --help" for more information about a command.
 ```
@@ -25,7 +26,7 @@ Use "ve-cli [command] --help" for more information about a command.
 ## Examples
 
 ```bash
-ve-cli block 10 --endpoint http://localhost:26657
+bin/ve-cli block 10 --comet-endpoint http://localhost:26657 --heimdall-endpoint http://localhost:1317
 
-ve-cli blocks 10 20 --endpoint http://localhost:26657
+bin/ve-cli blocks 10 20 --comet-endpoint http://localhost:26657 --heimdall-endpoint http://localhost:1317
 ```
